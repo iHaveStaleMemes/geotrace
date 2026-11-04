@@ -1,0 +1,108 @@
+/* ==========================================================================
+   Architectural Blueprint & Layout Tracer - Modern Design System
+   ========================================================================== */
+
+:root, html.dark {
+  --bg-color: #080c16;
+  --grid-color: rgba(255, 255, 255, 0.035);
+  --text-main: #f8fafc;
+  --text-sub: #94a3b8;
+  --text-muted: #64748b;
+  --card-bg: #111827;
+  --card-border: #334155;
+  --card-shadow: #020617;
+  --btn-bg: #1e293b;
+  --btn-border: #334155;
+  --btn-text: #f1f5f9;
+  --btn-hover: #273549;
+  --canvas-bg: #050811;
+  --canvas-drop-bg: #0d1424;
+  --hud-bg: rgba(17, 24, 39, 0.92);
+  --input-bg: #1e293b;
+  --input-border: #475569;
+}
+
+html.light {
+  --bg-color: #f8fafc;
+  --grid-color: rgba(15, 23, 42, 0.05);
+  --text-main: #0f172a;
+  --text-sub: #475569;
+  --text-muted: #64748b;
+  --card-bg: #ffffff;
+  --card-border: #0f172a;
+  --card-shadow: #0f172a;
+  --btn-bg: #ffffff;
+  --btn-border: #0f172a;
+  --btn-text: #0f172a;
+  --btn-hover: #f1f5f9;
+  --canvas-bg: #e2e8f0;
+  --canvas-drop-bg: #ffffff;
+  --hud-bg: rgba(255, 255, 255, 0.95);
+  --input-bg: #f8fafc;
+  --input-border: #0f172a;
+}
+
+body {
+  font-family: 'Plus Jakarta Sans', sans-serif;
+  background-color: var(--bg-color);
+  background-image: 
+    linear-gradient(to right, var(--grid-color) 1px, transparent 1px),
+    linear-gradient(to bottom, var(--grid-color) 1px, transparent 1px);
+  background-size: 20px 20px;
+  color: var(--text-main);
+  transition: background-color 0.2s ease, color 0.2s ease;
+}
+
+.mono {
+  font-family: 'JetBrains Mono', monospace;
+}
+
+/* Neo-Brutalist Architectural Cards */
+.neo-card {
+  background-color: var(--card-bg);
+  border: 2px solid var(--card-border);
+  box-shadow: 3px 3px 0px var(--card-shadow);
+  border-radius: 0.75rem;
+  color: var(--text-main);
+  transition: background-color 0.2s ease, border-color 0.2s ease;
+}
+
+/* Interactive Buttons */
+.neo-btn {
+  background-color: var(--btn-bg);
+  border: 2px solid var(--btn-border);
+  box-shadow: 2px 2px 0px var(--card-shadow);
+  color: var(--btn-text);
+  border-radius: 0.5rem;
+  transition: all 0.1s ease;
+  font-weight: 700;
+}
+
+.neo-btn:hover:not(:disabled) {
+  box-shadow: 3px 3px 0px var(--card-shadow);
+  background-color: var(--btn-hover);
+  transform: translateY(-1px);
+}
+
+.neo-btn:active:not(:disabled) {
+  box-shadow: 1px 1px 0px var(--card-shadow);
+  transform: translateY(1px);
+}
+
+.neo-btn:disabled {
+  opacity: 0.38;
+  cursor: not-allowed;
+  transform: none !important;
+  box-shadow: none !important;
+}
+
+.neo-btn.active {
+  background-color: #2563eb !important;
+  border-color: #60a5fa !important;
+  color: #ffffff !important;
+  box-shadow: 2px 2px 0px #1e3a8a !important;
+}
+
+canvas {
+  user-select: none;
+}

@@ -1,0 +1,382 @@
+<!DOCTYPE html>
+<html lang="en" class="dark">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>GeoTrace — Architectural Blueprint & Layout Tracer</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {}
+      }
+    };
+  </script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body class="h-screen flex flex-col p-3 overflow-hidden select-none">
+
+  <!-- TOP APP HEADER -->
+  <header class="flex items-center justify-between pb-2.5 mb-2.5 neo-card px-4 py-2">
+    <div class="flex items-center gap-3">
+      <div class="w-9 h-9 rounded-lg bg-blue-600 text-white font-black text-lg flex items-center justify-center border-2 border-[var(--card-border)] shadow-[2px_2px_0px_var(--card-shadow)]">
+        📐
+      </div>
+      <div>
+        <h1 class="text-sm font-extrabold tracking-tight text-[var(--text-main)] flex items-center gap-2">
+          GeoTrace
+          <span class="px-2 py-0.5 text-[9px] font-mono font-bold bg-blue-600/20 text-blue-400 border border-blue-500/40 rounded-full">METRIC & ROTATABLE</span>
+        </h1>
+        <p class="text-[11px] text-[var(--text-sub)] font-medium">
+          Right-Click Drag to Pan • Ctrl + Right-Click Drag Up/Down to Rotate • Wheel to Zoom
+        </p>
+      </div>
+    </div>
+
+    <!-- ACTION BUTTONS -->
+    <div class="flex items-center gap-2">
+      <!-- Image Upload & Change -->
+      <label class="neo-btn px-3 py-1.5 text-xs cursor-pointer flex items-center gap-1.5" title="Load a new photo or map">
+        <span>📁 Load Photo</span>
+        <input type="file" id="file-upload" accept="image/*" class="hidden">
+      </label>
+
+      <!-- Rotation Presets -->
+      <div class="flex items-center bg-[var(--btn-bg)] rounded-lg p-0.5 border-2 border-[var(--btn-border)] text-xs font-bold">
+        <button id="btn-rot-0" class="px-2 py-1 rounded hover:text-blue-400 transition" title="Reset Rotation to 0°">0°</button>
+        <button id="btn-rot-30" class="px-2 py-1 rounded bg-blue-600 text-white font-black shadow-sm" title="Rotate 30° (Aligns building horizontal)">30°</button>
+        <button id="btn-rot-45" class="px-2 py-1 rounded hover:text-blue-400 transition">45°</button>
+        <button id="btn-rot-90" class="px-2 py-1 rounded hover:text-blue-400 transition">90°</button>
+      </div>
+
+      <button id="btn-reset-view" class="neo-btn px-2.5 py-1.5 text-xs" title="Reset Zoom, Pan & Rotation">
+        ↺ Reset View
+      </button>
+
+      <div class="h-5 w-px bg-[var(--card-border)] mx-0.5"></div>
+
+      <!-- Undo / Redo (No confirmation) -->
+      <button id="btn-undo" class="neo-btn px-2.5 py-1.5 text-xs flex items-center gap-1" title="Undo Last Action (Ctrl+Z) - No confirmation">
+        <span>↶</span> Undo
+      </button>
+      <button id="btn-redo" class="neo-btn px-2.5 py-1.5 text-xs flex items-center gap-1" title="Redo Last Undone Action (Ctrl+Shift+Z / Ctrl+Y) - No confirmation">
+        <span>↷</span> Redo
+      </button>
+
+      <div class="h-5 w-px bg-[var(--card-border)] mx-0.5"></div>
+
+      <!-- Theme Switcher (Dark default) -->
+      <button id="btn-theme-toggle" class="neo-btn px-2.5 py-1.5 text-xs flex items-center gap-1.5" title="Toggle Dark / Light Theme">
+        🌙 Dark
+      </button>
+
+      <div class="h-5 w-px bg-[var(--card-border)] mx-0.5"></div>
+
+      <!-- Export Options -->
+      <button id="btn-export-png" class="neo-btn px-3 py-1.5 text-xs bg-emerald-600/20 text-emerald-300 border-emerald-500/40 hover:bg-emerald-600/30 flex items-center gap-1">
+        📷 Export PNG
+      </button>
+      <button id="btn-export-svg" class="neo-btn px-3 py-1.5 text-xs bg-blue-600/20 text-blue-300 border-blue-500/40 hover:bg-blue-600/30 flex items-center gap-1">
+        📐 Export SVG
+      </button>
+      <button id="btn-export-json" class="neo-btn px-3 py-1.5 text-xs bg-purple-600/20 text-purple-300 border-purple-500/40 hover:bg-purple-600/30 flex items-center gap-1">
+        📋 Export JSON
+      </button>
+      <button id="btn-clear-all" class="neo-btn px-3 py-1.5 text-xs bg-red-600/20 text-red-300 border-red-500/40 hover:bg-red-600/30">
+        🗑️ Clear
+      </button>
+    </div>
+  </header>
+
+  <!-- WORKSPACE: TOOLBAR + CANVAS + SIDEBAR -->
+  <div class="flex-1 grid grid-cols-12 gap-3 min-h-0">
+
+    <!-- LEFT: TOOL CONTROLS & INSTRUCTIONS (2 Cols) -->
+    <div class="col-span-2 flex flex-col gap-3 min-h-0 overflow-y-auto">
+      
+      <!-- Drawing Tools -->
+      <div class="neo-card p-3 flex flex-col gap-2">
+        <h2 class="text-xs font-black uppercase tracking-wider text-[var(--text-main)]">Drawing Mode</h2>
+        
+        <button id="tool-rect" class="neo-btn active w-full py-2 text-xs flex items-center justify-start px-3 gap-2">
+          <span>⬛</span>
+          <div class="text-left">
+            <div>Rectangle / Square</div>
+            <div class="text-[10px] text-slate-300 font-normal">Click 2 corners (Shift = Skew)</div>
+          </div>
+        </button>
+
+        <button id="tool-poly" class="neo-btn w-full py-2 text-xs flex items-center justify-start px-3 gap-2">
+          <span>⬡</span>
+          <div class="text-left">
+            <div>Multi-Point Polygon</div>
+            <div class="text-[10px] text-[var(--text-sub)] font-normal">Ctrl+Click corners → connect start</div>
+          </div>
+        </button>
+
+        <button id="tool-select" class="neo-btn w-full py-2 text-xs flex items-center justify-start px-3 gap-2">
+          <span>👆</span>
+          <div class="text-left">
+            <div>Select & Inspect</div>
+            <div class="text-[10px] text-[var(--text-sub)] font-normal">Click shape to view / edit</div>
+          </div>
+        </button>
+      </div>
+
+      <!-- Controls & Mouse Guide -->
+      <div class="neo-card p-3 flex flex-col gap-2 text-xs">
+        <h2 class="text-xs font-black uppercase tracking-wider text-[var(--text-main)]">Navigation & Keys</h2>
+        <ul class="space-y-2 text-[11px] text-[var(--text-sub)] font-medium">
+          <li class="p-2 bg-blue-500/10 border border-blue-500/30 rounded-lg">
+            <span class="font-bold text-blue-400 block mb-0.5">🔄 Rotate View:</span>
+            <span>Hold <kbd class="px-1 py-0.5 bg-[var(--btn-bg)] border border-[var(--btn-border)] rounded font-mono text-[9px] font-bold">Ctrl</kbd> + <strong>Right-Click Drag</strong> mouse up or down!</span>
+          </li>
+          <li class="p-2 bg-[var(--btn-bg)] border border-[var(--card-border)] rounded-lg">
+            <span class="font-bold text-[var(--text-main)] block mb-0.5">✋ Pan / Move:</span>
+            <span><strong>Right-Click Drag</strong> to move around freely.</span>
+          </li>
+          <li class="p-2 bg-[var(--btn-bg)] border border-[var(--card-border)] rounded-lg">
+            <span class="font-bold text-[var(--text-main)] block mb-0.5">🔍 Zoom:</span>
+            <span><strong>Mouse Scroll Wheel</strong> zooms smoothly towards cursor.</span>
+          </li>
+          <li class="p-2 bg-amber-500/10 border border-amber-500/30 rounded-lg">
+            <span class="font-bold text-amber-400 block mb-0.5">📐 Parallelogram:</span>
+            <span>Hold <kbd class="px-1 py-0.5 bg-[var(--btn-bg)] border border-[var(--btn-border)] rounded font-mono text-[9px] font-bold">Shift</kbd> while drawing rectangle to skew it!</span>
+          </li>
+          <li class="p-2 bg-emerald-500/10 border border-emerald-500/30 rounded-lg">
+            <span class="font-bold text-emerald-400 block mb-0.5">⬡ Polygon Corners:</span>
+            <span>Hold <kbd class="px-1 py-0.5 bg-[var(--btn-bg)] border border-[var(--btn-border)] rounded font-mono text-[9px] font-bold">Ctrl</kbd> + Left Click. Click start point to finish!</span>
+          </li>
+          <li class="p-2 bg-purple-500/10 border border-purple-500/30 rounded-lg">
+            <span class="font-bold text-purple-400 block mb-0.5">⚡ Instant Undo / Redo:</span>
+            <span><kbd class="px-1 py-0.5 bg-[var(--btn-bg)] border border-[var(--btn-border)] rounded font-mono text-[9px] font-bold">Ctrl+Z</kbd> undoes instantly without confirmation. <kbd class="px-1 py-0.5 bg-[var(--btn-bg)] border border-[var(--btn-border)] rounded font-mono text-[9px] font-bold">Ctrl+Shift+Z</kbd> redoes.</span>
+          </li>
+        </ul>
+      </div>
+
+      <!-- Scale Calibration Box -->
+      <div class="neo-card p-3 flex flex-col gap-1.5 text-xs">
+        <h2 class="text-xs font-black uppercase tracking-wider text-[var(--text-main)]">Scale Calibration</h2>
+        <div class="flex items-center justify-between text-[11px] text-[var(--text-sub)]">
+          <span>1 pixel =</span>
+          <div class="flex items-center gap-1">
+            <input type="number" id="scale-input" value="0.50" step="0.01" class="w-16 px-1.5 py-0.5 bg-[var(--input-bg)] border border-[var(--input-border)] text-[var(--text-main)] rounded text-right font-mono font-bold text-xs">
+            <span class="font-bold text-[var(--text-main)]">m</span>
+          </div>
+        </div>
+        <p class="text-[10px] text-[var(--text-muted)]">Google Maps Zoom 18: ~0.50 m/px</p>
+      </div>
+
+    </div>
+
+    <!-- CENTER: ZOOMABLE & ROTATABLE CANVAS VIEWPORT (7 Cols) -->
+    <div id="canvas-wrapper" class="col-span-7 neo-card p-0 flex flex-col relative overflow-hidden bg-[var(--canvas-bg)]">
+      
+      <!-- Canvas Status Indicator Overlay (Top Left) -->
+      <div class="absolute top-4 left-4 z-10 bg-[var(--hud-bg)] border-2 border-[var(--card-border)] px-3 py-1.5 rounded-lg text-xs font-bold shadow-[2px_2px_0px_var(--card-shadow)] flex items-center gap-2 backdrop-blur">
+        <span id="status-indicator-dot" class="w-2.5 h-2.5 rounded-full bg-blue-500 animate-pulse"></span>
+        <span id="status-mode-text" class="text-[var(--text-main)]">Load an image or click "Load Photo" to begin tracing</span>
+      </div>
+
+      <!-- Navigation & Rotation HUD (Bottom Right) -->
+      <div class="absolute bottom-4 right-4 z-10 bg-[var(--hud-bg)] border-2 border-[var(--card-border)] px-3.5 py-1.5 rounded-lg text-[11px] font-mono font-bold shadow-[2px_2px_0px_var(--card-shadow)] flex items-center gap-3 backdrop-blur text-[var(--text-main)]">
+        <div class="flex items-center gap-1.5">
+          <span class="text-blue-400">🔄 Angle:</span>
+          <span id="hud-rot" class="font-black text-[var(--text-main)]">0.0°</span>
+        </div>
+        <span class="text-[var(--text-muted)]">•</span>
+        <div>Zoom: <span id="hud-zoom" class="text-[var(--text-main)]">100%</span></div>
+        <span class="text-[var(--text-muted)]">•</span>
+        <div>Pos: <span id="hud-coords" class="text-[var(--text-sub)]">0, 0</span></div>
+      </div>
+
+      <!-- Rotation Drag Hint Overlay (appears while Ctrl + Right Clicking) -->
+      <div id="rotate-hint-overlay" class="absolute inset-0 pointer-events-none z-20 flex items-center justify-center hidden">
+        <div class="bg-slate-950/90 text-white px-5 py-3 rounded-2xl border-2 border-blue-500 shadow-2xl flex items-center gap-3 text-sm font-black backdrop-blur">
+          <span class="text-2xl animate-spin">🔄</span>
+          <span>Rotating View : Drag mouse Up/Down</span>
+          <span id="overlay-angle-text" class="text-blue-400 font-mono text-base ml-2">30.0°</span>
+        </div>
+      </div>
+
+      <!-- Main Full-Size Interactive Canvas -->
+      <canvas id="main-canvas" class="w-full h-full block cursor-crosshair"></canvas>
+
+    </div>
+
+    <!-- RIGHT: LAYERS LIST, MEASUREMENTS & CODE (3 Cols) -->
+    <div class="col-span-3 flex flex-col gap-3 min-h-0">
+      
+      <!-- Layers / Shapes List -->
+      <div class="neo-card p-3 flex flex-col flex-1 min-h-0">
+        <div class="flex items-center justify-between pb-2 mb-2 border-b-2 border-[var(--card-border)]">
+          <div class="flex items-center gap-1.5">
+            <h2 class="text-xs font-black uppercase tracking-wider text-[var(--text-main)]">
+              Layouts (<span id="layer-count">0</span>)
+            </h2>
+            <span id="selected-count-badge" class="hidden px-1.5 py-0.2 text-[9px] font-mono font-bold bg-blue-600/30 text-blue-300 border border-blue-500/40 rounded-full">
+              0 sel
+            </span>
+          </div>
+          
+          <!-- Quick Batch All Toggles -->
+          <div class="flex items-center gap-1">
+            <button id="btn-toggle-all-names" class="neo-btn px-1.5 py-0.5 text-[10px] flex items-center gap-1" title="Toggle Name Labels for all layouts">
+              <span>🏷️</span> <span id="toggle-all-names-text">Names</span>
+            </button>
+            <button id="btn-toggle-all-vis" class="neo-btn px-1.5 py-0.5 text-[10px] flex items-center gap-1" title="Toggle Visibility for all layouts">
+              <span>👁️</span> <span>All</span>
+            </button>
+          </div>
+        </div>
+
+        <!-- Multi-Selection Action Bar (Reveals when layouts are checked) -->
+        <div id="bulk-actions-bar" class="hidden p-2 mb-2 bg-blue-950/40 border border-blue-500/40 rounded-lg flex items-center justify-between gap-1 text-xs">
+          <div class="flex items-center gap-1.5 font-bold text-[10px] text-blue-300">
+            <input type="checkbox" id="chk-select-all" class="w-3.5 h-3.5 rounded accent-blue-600 cursor-pointer" title="Select / Deselect All">
+            <span>(<span id="bulk-count">0</span>)</span>
+          </div>
+          <div class="flex items-center gap-1">
+            <button id="btn-bulk-show-names" class="neo-btn px-1.5 py-0.5 text-[10px] bg-amber-500/20 text-amber-300 border-amber-500/40 hover:bg-amber-500/30" title="Show names on drawing for selected">
+              🏷️ Show
+            </button>
+            <button id="btn-bulk-hide-names" class="neo-btn px-1.5 py-0.5 text-[10px] hover:bg-slate-700/50" title="Hide names on drawing for selected">
+              🏷️ Hide
+            </button>
+            <label class="neo-btn px-1.5 py-0.5 text-[10px] cursor-pointer flex items-center gap-1 bg-purple-600/20 text-purple-300 border-purple-500/40 hover:bg-purple-600/30" title="Change color for selected layouts">
+              <span>🎨 Color</span>
+              <input type="color" id="bulk-color-picker" class="hidden">
+            </label>
+            <button id="btn-bulk-delete" class="neo-btn px-1.5 py-0.5 text-[10px] text-red-400 border-red-500/40 hover:bg-red-500/20" title="Delete selected layouts">
+              🗑️
+            </button>
+          </div>
+        </div>
+
+        <div id="layers-list" class="flex-1 overflow-y-auto space-y-2 pr-1 text-xs">
+          <div class="text-[var(--text-muted)] italic text-[11px] p-2 text-center">
+            No shapes created yet. Draw a rectangle or polygon on the canvas!
+          </div>
+        </div>
+      </div>
+
+      <!-- Real-time Inspector / Selected Layout -->
+      <div class="neo-card p-3 flex flex-col gap-2 text-xs">
+        <h2 class="text-xs font-black uppercase tracking-wider text-[var(--text-main)]">Real-World Dimensions</h2>
+        <div id="inspector-content" class="font-mono text-[11px] text-[var(--text-sub)] space-y-1">
+          <div>Select or draw a layout to view real dimensions in meters.</div>
+        </div>
+      </div>
+
+    </div>
+
+  </div>
+
+  <!-- COLOR & STYLE PICKER MODAL (AUTO-POPS WHEN A SHAPE IS FINISHED) -->
+  <div id="style-modal" class="fixed inset-0 z-50 bg-black/70 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="neo-card max-w-sm w-full p-5 relative shadow-[6px_6px_0px_var(--card-shadow)] animate-in fade-in zoom-in-95 duration-150">
+      
+      <div class="flex items-center justify-between pb-2 mb-3 border-b-2 border-[var(--card-border)]">
+        <h3 class="text-sm font-black text-[var(--text-main)] flex items-center gap-2">
+          🎨 Style This Layout
+        </h3>
+        <span class="text-[10px] font-mono bg-blue-600/20 text-blue-300 border border-blue-500/40 px-1.5 py-0.5 rounded font-bold">SOLID BORDER + TINT</span>
+      </div>
+
+      <!-- Label / Name input -->
+      <div class="mb-3">
+        <label class="block text-xs font-bold text-[var(--text-sub)] mb-1">Layout Name / Identifier :</label>
+        <input type="text" id="modal-name-input" value="Building 1" class="w-full px-2.5 py-1.5 text-xs bg-[var(--input-bg)] border-2 border-[var(--input-border)] rounded-lg font-bold text-[var(--text-main)] focus:outline-none focus:border-blue-500">
+      </div>
+
+      <!-- Quick Preset Palette -->
+      <div class="mb-3">
+        <label class="block text-xs font-bold text-[var(--text-sub)] mb-1.5">Pick Layout Color :</label>
+        <div class="grid grid-cols-6 gap-2" id="preset-colors-grid">
+          <!-- Swatches dynamically generated -->
+        </div>
+      </div>
+
+      <!-- Custom Color Input -->
+      <div class="flex items-center justify-between mb-3.5 bg-[var(--input-bg)] p-2 rounded-lg border border-[var(--input-border)]">
+        <span class="text-xs font-bold text-[var(--text-sub)]">Custom Color Picker:</span>
+        <div class="flex items-center gap-2">
+          <input type="color" id="modal-custom-color" value="#3b82f6" class="w-8 h-8 rounded border border-[var(--card-border)] cursor-pointer bg-transparent">
+          <span id="modal-hex-val" class="font-mono text-xs font-bold text-[var(--text-main)]">#3B82F6</span>
+        </div>
+      </div>
+
+      <!-- Opacity Slider -->
+      <div class="mb-3">
+        <div class="flex items-center justify-between text-xs font-bold text-[var(--text-sub)] mb-1">
+          <span>Inside Overlay Transparency:</span>
+          <span id="modal-opacity-val" class="font-mono text-blue-400 font-extrabold">35%</span>
+        </div>
+        <input type="range" id="modal-opacity-slider" min="10" max="85" value="35" class="w-full accent-blue-600 h-2 bg-[var(--btn-bg)] rounded-lg appearance-none cursor-pointer">
+      </div>
+
+      <!-- Show Name in drawing checkbox (default invisible) -->
+      <div class="mb-4 flex items-center justify-between bg-[var(--input-bg)] p-2 rounded-lg border border-[var(--input-border)]">
+        <span class="text-xs font-bold text-[var(--text-sub)]">Show Name in Drawing:</span>
+        <label class="flex items-center gap-1.5 cursor-pointer text-xs font-bold text-[var(--text-main)]">
+          <input type="checkbox" id="modal-show-name" class="w-4 h-4 rounded accent-blue-600 cursor-pointer">
+          <span class="text-[11px] text-[var(--text-sub)]">Visible</span>
+        </label>
+      </div>
+
+      <!-- Modal Footer Buttons -->
+      <div class="flex items-center justify-end gap-2 pt-2 border-t-2 border-[var(--card-border)]">
+        <button id="btn-modal-cancel" class="neo-btn px-3 py-1.5 text-xs">
+          Cancel
+        </button>
+        <button id="btn-modal-confirm" class="neo-btn px-4 py-1.5 text-xs bg-emerald-600 text-white hover:bg-emerald-700 shadow-[2px_2px_0px_#065f46]">
+          ✓ Apply & Save
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- DELETE CONFIRMATION MODAL -->
+  <div id="delete-modal" class="fixed inset-0 z-50 bg-black/75 backdrop-blur-sm flex items-center justify-center p-4 hidden">
+    <div class="neo-card max-w-sm w-full p-5 relative shadow-[6px_6px_0px_var(--card-shadow)] animate-in fade-in zoom-in-95 duration-150">
+      
+      <div class="flex items-center gap-3 mb-3 pb-3 border-b-2 border-[var(--card-border)]">
+        <div class="w-10 h-10 rounded-lg bg-red-500/20 text-red-400 border border-red-500/40 flex items-center justify-center text-xl font-black shrink-0">
+          🗑️
+        </div>
+        <div>
+          <h3 class="text-sm font-black text-[var(--text-main)]">Delete Layout?</h3>
+          <p class="text-[11px] text-[var(--text-sub)]">Confirmation required</p>
+        </div>
+      </div>
+
+      <p class="text-xs text-[var(--text-sub)] mb-4 leading-relaxed">
+        Are you sure you want to delete <span id="delete-modal-shape-name" class="font-bold text-red-400"></span>?
+        <span class="block mt-1 text-[10px] text-[var(--text-muted)]">
+          Note: You can instantly restore any deletion at any time by pressing <kbd class="px-1 py-0.5 bg-[var(--btn-bg)] border border-[var(--card-border)] rounded font-mono font-bold">Ctrl+Z</kbd>.
+        </span>
+      </p>
+
+      <div class="flex items-center justify-end gap-2 pt-2 border-t-2 border-[var(--card-border)]">
+        <button id="btn-delete-cancel" class="neo-btn px-3.5 py-1.5 text-xs">
+          Cancel
+        </button>
+        <button id="btn-delete-confirm" class="neo-btn px-4 py-1.5 text-xs bg-red-600 border-red-700 text-white hover:bg-red-700 shadow-[2px_2px_0px_#7f1d1d]">
+          Yes, Delete Layout
+        </button>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- FLOATING TOAST NOTIFICATION -->
+  <div id="toast" class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 px-4 py-2 rounded-xl text-xs font-bold neo-card opacity-0 pointer-events-none transition-all duration-200"></div>
+
+  <script src="app.js"></script>
+</body>
+</html>

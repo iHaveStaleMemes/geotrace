@@ -1,0 +1,8 @@
+# OS metadata
+.DS_Store
+Thumbs.db
+
+# Temporary logs & caches
+*.log
+*.tmp
+.cache/
